@@ -1,1 +1,1 @@
-# YT-Downloader
+# YT Downloader
