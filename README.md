@@ -1,6 +1,9 @@
 # YT Downloader
 A useful utility for downloading YouTube videos or playlists for free!
 
+Download ffmpeg: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip
+
+
 # Preview
 
 Enter Video URL:
@@ -21,8 +24,6 @@ Configure Video:
 Downloading Video:
 
 ![image](https://github.com/HenryZhao2020/YTDownloader/assets/75873192/7ee3a83f-e4f6-4955-8345-0f0dd148e420)
-
-
 
 
 Enter Playlist URL:
