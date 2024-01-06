@@ -43,3 +43,13 @@ Configure Playlist:
 Downloading Playlist:
 
 ![image](https://github.com/HenryZhao2020/YTDownloader/assets/75873192/4303f4e2-ebc0-4a4d-add5-c661a7d16543)
+
+
+Preferences Dialog:
+
+![image](https://github.com/HenryZhao2020/YTDownloader/assets/75873192/7201ffd4-d02e-4e5d-9aae-18c2e8bd7e16)
+
+
+About Dialog:
+
+![image](https://github.com/HenryZhao2020/YTDownloader/assets/75873192/43395338-0c8e-4ee1-8b46-d18eb50e7dd5)
