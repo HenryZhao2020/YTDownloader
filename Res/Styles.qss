@@ -1,0 +1,7 @@
+QMainWindow, QDialog {
+    background: palette(base);
+}
+
+QListWidget, QTextBrowser {
+    border: 0;
+}
