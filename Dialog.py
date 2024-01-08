@@ -2,20 +2,20 @@
 Contains the implementation of various dialog boxes used in the program.
 """
 
-from pytube import YouTube, Playlist
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QFormLayout, \
     QGridLayout
 from PySide6.QtWidgets import QWidget, QDialog, QFileDialog, QMessageBox, \
-    QFrame, QPushButton, QLabel, QGroupBox, QLineEdit, QComboBox, \
-    QSpacerItem, QListWidget, QListWidgetItem, QTextBrowser
+    QFrame, QPushButton, QGroupBox, QLineEdit, QComboBox, QCheckBox, \
+    QListWidget, QListWidgetItem, QTextBrowser
+from pytube import YouTube, Playlist
 
 import MyTube
 import Thread
+from Attr import attr
 from MainWindow import MainWindow
 from MyTube import Option
-from Attr import attr
 
 
 class DownloadDialog(QDialog):
@@ -23,25 +23,23 @@ class DownloadDialog(QDialog):
     Base class for the 'VideoDialog' class and the 'PlaylistDialog' class.
     """
 
-    def __init__(self, win: MainWindow, width: int):
+    def __init__(self, win: MainWindow):
         super().__init__(win)
         # Free memory on close
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        
-        self.fixedWidth = width
 
         # Set up the layout
         self.mainLayout = QVBoxLayout(self)
         self.mainLayout.setSpacing(25)
         self.mainLayout.setContentsMargins(40, 40, 40, 40)
 
-        # Configure video quality
+        # Configure download quality
         self.qualFrame = QualityFrame(self)
-        self.mainLayout.addWidget(self.newGroupBox("Quality", self.qualFrame))
-        
-        # Download location
+        self.mainLayout.addWidget(newGroupBox("Quality", self, self.qualFrame))
+
+        # Configure download location
         self.dirFrame = DirFrame(self)
-        self.mainLayout.addWidget(self.newGroupBox("Location", self.dirFrame))
+        self.mainLayout.addWidget(newGroupBox("Save To", self, self.dirFrame))
 
         # Start downloading on click
         self.startButton = QPushButton("Start", self)
@@ -50,24 +48,6 @@ class DownloadDialog(QDialog):
         self.mainLayout.addSpacing(25)
         self.mainLayout.addWidget(self.startButton, 0,
                                   Qt.AlignmentFlag.AlignRight)
-
-    def newGroupBox(self, title: str, *widgets: QWidget):
-        """
-        Creates a group box with the specified title and widgets.
-        """
-
-        box = QGroupBox(title, self)
-        
-        # Set up the layout
-        vboxLayout = QVBoxLayout(box)
-        vboxLayout.setSpacing(0)
-        vboxLayout.setContentsMargins(25, 25, 25, 25)
-        
-        # Add widgets to layout
-        for widget in widgets:
-            vboxLayout.addWidget(widget)
-
-        return box
 
     def preFetch(self):
         """
@@ -82,8 +62,6 @@ class DownloadDialog(QDialog):
         Fetches information online.
         """
 
-        self.qualFrame.optBox.addItems(MyTube.OPTIONS)
-
     def postFetch(self):
         """
         Handles events after fetching completes.
@@ -91,26 +69,32 @@ class DownloadDialog(QDialog):
 
         self.setEnabled(True)
 
-        self.qualFrame.optBox.setCurrentText(attr.opt)
-
     def confirmDownload(self):
         """
         Confirms before downloading.
         """
 
-        ans = QMessageBox.question(self, "Confirm Download", 
-                                   "Do you want to start the download?")
-        
-        if ans == QMessageBox.StandardButton.Yes:
-            self.preDownload(),
-            Thread.start(lambda: self.download(),
-                         lambda: self.postDownload())
+        # Confirm before download if preferred
+        if attr.confirmDownload:
+            # Display a question message box
+            ans = QMessageBox.question(self, "Confirm Download",
+                                       "Do you want to start the download?")
+
+            # If the user does not select 'Yes', cancel download
+            if ans != QMessageBox.StandardButton.Yes:
+                return
+
+        # Otherwise, proceed to download
+        self.preDownload(),
+        Thread.start(lambda: self.download(),
+                     lambda: self.postDownload())
 
     def preDownload(self):
         """
         Handles events before downloading.
         """
 
+        # Disable the dialog to prevent any configurations from changing
         self.setEnabled(False)
         self.setWindowTitle("Downloading...")
 
@@ -124,6 +108,12 @@ class DownloadDialog(QDialog):
         Handles events after downloading.
         """
 
+        # Close the dialog after download if preferred
+        if attr.closeAfterDownload:
+            self.close()
+            return
+
+        # Enable the dialog again
         self.setEnabled(True)
         self.setWindowTitle("Download Complete!")
 
@@ -132,9 +122,9 @@ class DownloadDialog(QDialog):
         Overrides the original show() method.
         """
 
-        # Set fixed width
         size = self.sizeHint()
-        size.setWidth(self.fixedWidth)
+        # Calculate the dialog width based on the dialog height
+        size.setWidth(round(size.height() * 0.85))
         # Make this window not resizable
         self.setFixedSize(size)
         super().show()
@@ -156,21 +146,50 @@ class QualityFrame(QFrame):
 
         # Display and select download option
         self.optBox = QComboBox(self)
-        # If option is 'Audio Only', disable selection of resolution
-        # If option is 'Video Only', disable selection of bitrate
+        # If option is 'Audio Only', disable selection of resolutions
+        # If option is 'Video Only', disable selection of bitrates
+        self.optBox.addItems(MyTube.OPTIONS)
         self.optBox.currentTextChanged.connect(lambda opt: (
-            self.resBox.setEnabled(opt != Option.AudioOnly),
-            self.abrBox.setEnabled(opt != Option.VideoOnly),
+            self.vidBox.setEnabled(opt != Option.AudioOnly),
+            self.audBox.setEnabled(opt != Option.VideoOnly),
         ))
         formLayout.addRow("Option:", self.optBox)
 
         # Display and select video resolution
-        self.resBox = QComboBox(self)
-        formLayout.addRow("Video Resolution:", self.resBox)
+        self.vidBox = QComboBox(self)
+        self.vidBox.addItems(MyTube.QUALITIES)
+        formLayout.addRow("Video Quality:", self.vidBox)
 
         # Display and select audio bitrate
-        self.abrBox = QComboBox(self)
-        formLayout.addRow("Audio Bitrate:", self.abrBox)
+        self.audBox = QComboBox(self)
+        self.audBox.addItems(MyTube.QUALITIES)
+        formLayout.addRow("Audio Quality:", self.audBox)
+
+        # Set to default
+        self.optBox.setCurrentText(attr.opt)
+        self.vidBox.setCurrentText(attr.vidQuality)
+        self.audBox.setCurrentText(attr.audQuality)
+
+    def opt(self):
+        """
+        Returns the selected download option.
+        """
+
+        return self.optBox.currentText()
+
+    def vidQuality(self):
+        """
+        Returns the selected video quality.
+        """
+
+        return self.vidBox.currentText()
+
+    def audQuality(self):
+        """
+        Returns the selected audio quality.
+        """
+
+        return self.audBox.currentText()
 
 
 class DirFrame(QFrame):
@@ -220,7 +239,7 @@ class VideoDialog(DownloadDialog):
     """
 
     def __init__(self, win: MainWindow, url: str):
-        super().__init__(win, 450)
+        super().__init__(win)
 
         # Create a 'YouTube' instance
         self.yt = YouTube(url)
@@ -228,37 +247,32 @@ class VideoDialog(DownloadDialog):
         # Display and edit video title
         self.titleField = QLineEdit(self)
         self.mainLayout.insertWidget(
-            0, self.newGroupBox("Title", self.titleField)
+            0, newGroupBox("Title", self, self.titleField)
         )
 
     def fetch(self):
         super().fetch()
 
         self.titleField.setText(self.yt.title)
-        self.qualFrame.resBox.addItems(MyTube.getResolutions(self.yt))
-        self.qualFrame.abrBox.addItems(MyTube.getBitrates(self.yt))
+
+        self.qualFrame.vidBox.addItems(MyTube.allResolutions(self.yt))
+        self.qualFrame.audBox.addItems(MyTube.allBitrates(self.yt))
 
     def postFetch(self):
         super().postFetch()
-    
+
         self.setWindowTitle("Download Video")
-
-        # Set default resolution
-        res = MyTube.getQuality(attr.resPref, MyTube.getResolutions(self.yt))
-        self.qualFrame.resBox.setCurrentText(res)
-
-        # Set default bitrate
-        abr = MyTube.getQuality(attr.abrPref, MyTube.getBitrates(self.yt))
-        self.qualFrame.abrBox.setCurrentText(abr)
 
     def download(self):
         super().download()
 
         # Fetch configurations
         title = self.titleField.text()
-        opt = self.qualFrame.optBox.currentText()
-        res = self.qualFrame.resBox.currentText()
-        abr = self.qualFrame.abrBox.currentText()
+        opt = self.qualFrame.opt()
+        vidQuality = self.qualFrame.vidQuality()
+        audQuality = self.qualFrame.audQuality()
+        res = MyTube.getResolution(self.yt, vidQuality)
+        abr = MyTube.getBitrate(self.yt, audQuality)
         dir = self.dirFrame.dir()
 
         # Download the video according to the configurations
@@ -269,6 +283,13 @@ class VideoDialog(DownloadDialog):
         else:
             MyTube.downloadVideo(self.yt, title, res, dir)
 
+    def postDownload(self):
+        super().postDownload()
+
+        # Reset the window title after 10s
+        QTimer.singleShot(10000, self,
+                          lambda: self.setWindowTitle("Download Video"))
+
 
 class PlaylistDialog(DownloadDialog):
     """
@@ -276,22 +297,23 @@ class PlaylistDialog(DownloadDialog):
     """
 
     def __init__(self, win: MainWindow, url: str):
-        super().__init__(win, 550)
+        super().__init__(win)
 
         # Create a 'Playlist' instance
         self.pl = Playlist(url)
 
         # Display all videos inside a playlist
         self.listWidget = QListWidget(self)
+        # Disable the 'Start' button if no item is selected
+        self.listWidget.itemChanged.connect(
+            lambda: self.startButton.setDisabled(not self.getCheckedRows())
+        )
         self.mainLayout.insertWidget(
-            0, self.newGroupBox("Playlist", self.listWidget)
+            0, newGroupBox("Playlist", self, self.listWidget)
         )
 
     def fetch(self):
         super().fetch()
-
-        self.qualFrame.resBox.addItems(MyTube.QUALITIES)
-        self.qualFrame.abrBox.addItems(MyTube.QUALITIES)
 
         # Fetch all videos
         for yt in self.pl.videos:
@@ -304,7 +326,7 @@ class PlaylistDialog(DownloadDialog):
 
         item = QListWidgetItem(yt.title, self.listWidget)
         item.setCheckState(Qt.CheckState.Checked)
-        item.setFlags(Qt.ItemFlag.ItemIsEnabled | 
+        item.setFlags(Qt.ItemFlag.ItemIsEnabled |
                       Qt.ItemFlag.ItemIsEditable |
                       Qt.ItemFlag.ItemIsSelectable |
                       Qt.ItemFlag.ItemIsUserCheckable)
@@ -315,16 +337,13 @@ class PlaylistDialog(DownloadDialog):
 
         self.setWindowTitle("Download Playlist")
 
-        self.qualFrame.resBox.setCurrentText(attr.resPref)
-        self.qualFrame.abrBox.setCurrentText(attr.abrPref)
-
-    def checkedRows(self):
+    def getCheckedRows(self):
         """
         Returns the row numbers of all checked items. 
         """
 
         return [
-            i for i in range(self.listWidget.count()) 
+            i for i in range(self.listWidget.count())
             if self.listWidget.item(i).checkState() == Qt.CheckState.Checked
         ]
 
@@ -332,20 +351,20 @@ class PlaylistDialog(DownloadDialog):
         super().download()
 
         # Total number of videos in a playlist
-        rows = self.checkedRows()
-        opt = self.qualFrame.optBox.currentText()
-        resPref = self.qualFrame.resBox.currentText()
-        abrPref = self.qualFrame.abrBox.currentText()
+        rows = self.getCheckedRows()
+        opt = self.qualFrame.opt()
+        vidQuality = self.qualFrame.vidQuality()
+        audQuality = self.qualFrame.audQuality()
         dir = self.dirFrame.dir()
-        
+
         for i, row in enumerate(rows):
             self.setWindowTitle(f"Downloading ({i + 1} of {len(rows)})...")
 
             # Fetch configurations
-            yt = self.pl.videos[row]
+            yt = self.pl.videos[i]
             title = self.listWidget.item(row).text()
-            res = MyTube.getQuality(resPref, MyTube.getResolutions(yt))
-            abr = MyTube.getQuality(abrPref, MyTube.getBitrates(yt))
+            res = MyTube.getResolution(yt, vidQuality)
+            abr = MyTube.getBitrate(yt, audQuality)
 
             # Download the video according to the configurations
             if opt == Option.VideoWithAudio:
@@ -354,6 +373,13 @@ class PlaylistDialog(DownloadDialog):
                 MyTube.downloadAudio(yt, title, abr, dir)
             else:
                 MyTube.downloadVideo(yt, title, res, dir)
+
+    def postDownload(self):
+        super().postDownload()
+
+        # Reset the window title after 10s
+        QTimer.singleShot(10000, self,
+                          lambda: self.setWindowTitle("Download Playlist"))
 
 
 class PrefDialog(QDialog):
@@ -368,44 +394,36 @@ class PrefDialog(QDialog):
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         # Set up the layout
-        gridLayout = QGridLayout(self)
-        gridLayout.setHorizontalSpacing(40)
-        gridLayout.setVerticalSpacing(5)
-        gridLayout.setContentsMargins(40, 40, 40, 40)
+        mainLayout = QVBoxLayout(self)
+        mainLayout.setSpacing(25)
+        mainLayout.setContentsMargins(40, 40, 40, 40)
 
-        # Default download option
-        self.optBox = QComboBox(self)
-        self.optBox.setMinimumWidth(260)
-        self.optBox.addItems(MyTube.OPTIONS)
-        self.optBox.setCurrentText(attr.opt)
-        gridLayout.addWidget(QLabel("Default Option:", self), 0, 0)
-        gridLayout.addWidget(self.optBox, 0, 1)
+        # Configure download quality
+        self.qualFrame = QualityFrame(self)
+        mainLayout.addWidget(newGroupBox("Quality", self, self.qualFrame))
 
-        # Default video quality
-        self.resBox = QComboBox(self)
-        self.resBox.addItems(MyTube.QUALITIES)
-        self.resBox.setCurrentText(attr.resPref)
-        gridLayout.addWidget(QLabel("Preferred Resolution:", self), 1, 0)
-        gridLayout.addWidget(self.resBox, 1, 1)
-
-        # Default audio quality
-        self.abrBox = QComboBox(self)
-        self.abrBox.addItems(MyTube.QUALITIES)
-        self.abrBox.setCurrentText(attr.abrPref)
-        gridLayout.addWidget(QLabel("Preferred Bitrate:", self), 2, 0)
-        gridLayout.addWidget(self.abrBox, 2, 1)
-
-        # Default download directory
+        # Configure download location
         self.dirFrame = DirFrame(self)
-        gridLayout.addWidget(QLabel("Default Location:", self), 3, 0)
-        gridLayout.addWidget(self.dirFrame, 3, 1)
-        gridLayout.addItem(QSpacerItem(0, 50), 4, 0)
+        mainLayout.addWidget(newGroupBox("Save To", self, self.dirFrame))
 
-        # Create a button group
+        # Whether to confirm before download
+        self.confirmBox = QCheckBox("Confirm Before Download", self)
+        self.confirmBox.setChecked(attr.confirmDownload)
+
+        # Whether to close dialog after download
+        self.closeAfterBox = QCheckBox("Close Dialog After Download", self)
+        self.closeAfterBox.setChecked(attr.closeAfterDownload)
+
+        # Group all check boxes
+        mainLayout.addWidget(newGroupBox("Action", self,
+                                         self.confirmBox,
+                                         self.closeAfterBox))
+
+        # Display buttons horizontally
         buttonFrame = QFrame(self)
-        gridLayout.addWidget(buttonFrame, 5, 0, 1, 2)
+        mainLayout.addSpacing(25)
+        mainLayout.addWidget(buttonFrame)
 
-        # Display button horizontally
         buttonLayout = QHBoxLayout(buttonFrame)
         buttonLayout.setSpacing(5)
         buttonLayout.setContentsMargins(0, 0, 0, 0)
@@ -413,13 +431,13 @@ class PrefDialog(QDialog):
         # Reset all preferences on click
         resetButton = QPushButton("Reset", self)
         resetButton.clicked.connect(lambda: (
-            attr.reset(),
+            attr.resetAll(),
             self.close(),
         ))
         buttonLayout.addWidget(resetButton)
         buttonLayout.addStretch()
 
-        # Apply preferences on click
+        # Apply changes on click
         okButton = QPushButton("OK", self)
         okButton.setDefault(True)
         okButton.clicked.connect(lambda: (
@@ -435,21 +453,26 @@ class PrefDialog(QDialog):
 
     def apply(self):
         """
-        Applys preferences.
+        Applies settings.
         """
 
-        attr.opt = self.optBox.currentText()
-        attr.resPref = self.resBox.currentText()
-        attr.abrPref = self.abrBox.currentText()
-        attr.dir = self.dirFrame.dirField.text()
+        attr.opt = self.qualFrame.opt()
+        attr.vidQuality = self.qualFrame.vidQuality()
+        attr.audQuality = self.qualFrame.audQuality()
+        attr.dir = self.dirFrame.dir()
+        attr.confirmDownload = self.confirmBox.isChecked()
+        attr.closeAfterDownload = self.closeAfterBox.isChecked()
 
     def show(self):
         """
         Overrides the original show() method.
         """
 
+        size = self.sizeHint()
+        # Calculate the dialog width based on the dialog height
+        size.setWidth(round(size.height() * 0.85))
         # Make this window not resizable
-        self.setFixedSize(self.sizeHint())
+        self.setFixedSize(size)
         super().show()
 
 
@@ -502,3 +525,22 @@ class AboutDialog(QDialog):
         # Make this window not resizable
         self.setFixedSize(self.sizeHint())
         super().show()
+
+
+def newGroupBox(title: str, parent: QWidget = None, *widgets: QWidget):
+    """
+    Creates a group box with a vertical box layout.
+    """
+
+    box = QGroupBox(title, parent)
+
+    # Set up the layout
+    vboxLayout = QVBoxLayout(box)
+    vboxLayout.setSpacing(5)
+    vboxLayout.setContentsMargins(25, 25, 25, 25)
+
+    # Add widgets to layout
+    for widget in widgets:
+        vboxLayout.addWidget(widget)
+
+    return box

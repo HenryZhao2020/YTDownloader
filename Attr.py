@@ -1,5 +1,5 @@
 """
-Contains the implementation of the 'Attribute' class.
+Contains the implementation of the 'Attr' class.
 """
 
 import os
@@ -8,33 +8,35 @@ import pickle
 from MyTube import Option, Quality
 
 
-class Attribute:
+class Attr:
     """
-    Stores attributes for saving and loading game state.
+    Stores attributes for saving and loading program state.
     """
 
     def __init__(self):
-        self.opt: str
-        self.resPref: str
-        self.abrPref: str
-        self.dir: str
+        # Default download option
+        self.opt = Option.VideoWithAudio
+        # Default video quality
+        self.vidQuality = Quality.Highest
+        # Default audio quality
+        self.audQuality = Quality.Highest
+        # Default download location
+        self.dir = os.path.expanduser("~")
+        # Whether to confirm before download
+        self.confirmDownload = True
+        # Whether to close dialog after download
+        self.closeAfterDownload = False
 
-        # Set all attributes to their default values
-        self.reset()
-
-    def reset(self):
+    def resetAll(self):
         """
         Resets all attributes to their default values.
         """
 
-        self.opt = Option.VideoWithAudio
-        self.resPref = Quality.Highest
-        self.abrPref = Quality.Highest
-        self.dir = os.path.expanduser("~")
+        self.__init__()
 
     def save(self):
         """
-        Saves all attributes in "__init__" to the local disk.
+        Saves all attributes in '__init__()' to the local disk.
         """
         
         with open("../Saved", "wb") as file:
@@ -42,7 +44,7 @@ class Attribute:
 
     def load(self):
         """
-        Loads all attributes in "__init__" from the local disk.
+        Loads all attributes in '__init__()' from the local disk.
         """
 
         with open("../Saved", "rb") as file:
@@ -50,4 +52,4 @@ class Attribute:
 
 
 # Create a singleton for the Attribute class
-attr = Attribute()
+attr = Attr()

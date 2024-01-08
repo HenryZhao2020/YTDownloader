@@ -3,9 +3,10 @@ Executes the main program.
 """
 
 import os
+from contextlib import suppress
 
 # Set the current directory to 'Res'
-# NOTE: place the following codes before importing 'gui'
+# NOTE: place the following codes before importing any project modules
 try:
     os.chdir(os.path.dirname(__file__))
     os.chdir("Res")
@@ -28,7 +29,6 @@ def main():
     app = QApplication([])
     app.setApplicationName("YT Downloader")
     app.setWindowIcon(QIcon("Logo.png"))
-
     # Save attributes upon exiting the program
     app.aboutToQuit.connect(lambda: attr.save())
 
@@ -37,10 +37,8 @@ def main():
         app.setStyleSheet(file.read())
 
     # Load attributes if possible
-    try:
+    with suppress(Exception):
         attr.load()
-    except Exception:
-        ...
 
     # Create a new 'MainWindow' instance
     win = MainWindow()

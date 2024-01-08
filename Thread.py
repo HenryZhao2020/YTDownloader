@@ -2,10 +2,12 @@
 Simplified implementation of threading in Qt.
 """
 
+from typing import Callable
+
 from PySide6.QtCore import QThread
 
 
-def start(run: object, finished = lambda: None):
+def start(run: Callable, finished=lambda: None):
     """
     Creates and starts a thread.
     """

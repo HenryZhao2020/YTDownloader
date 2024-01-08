@@ -4,11 +4,11 @@ Contains the GUI implementation.
 
 import webbrowser
 
-from pytube import YouTube, Playlist
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QGridLayout
 from PySide6.QtWidgets import QWidget, QApplication, QMainWindow, QMenuBar, \
     QLabel, QLineEdit, QSpacerItem, QPushButton
+from pytube import YouTube, Playlist
 
 import MyTube
 import Thread
@@ -22,13 +22,13 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        # Display a menu bar on the top
+        menuBar = MenuBar(self)
+        self.setMenuBar(menuBar)
+
         # Create a central widget
         widget = QWidget(self)
         self.setCentralWidget(widget)
-
-        # Display a menu bar on the top
-        menu = MenuBar(self)
-        self.setMenuBar(menu)
 
         # Set up the layout
         gridLayout = QGridLayout(widget)
@@ -80,13 +80,13 @@ class MainWindow(QMainWindow):
         if not url:
             return
 
-        # If URL is invalid, display an error message
-        if (error := MyTube.checkUrl(url)):
+        # If URL is invalid, display an error message in red
+        if error := MyTube.checkUrl(url):
             self.infoLabel.setText(error)
             self.infoLabel.setStyleSheet("color: red")
             return
 
-        # If URL is a valid video or playlist, notify the user
+        # If URL is a valid video or playlist, display a message in green
         if MyTube.isUrlPlaylist(url):
             pl = Playlist(url)
             self.infoLabel.setText(f'Playlist: {pl.title}')
@@ -102,7 +102,7 @@ class MainWindow(QMainWindow):
         If URL is valid, proceed to download.
         """
 
-        # NOTE: place the statement here to avoid circular import
+        # NOTE: place the import statement here to avoid circular import
         from Dialog import VideoDialog, PlaylistDialog
 
         # Entered URL
@@ -114,8 +114,9 @@ class MainWindow(QMainWindow):
         else:
             dialog = VideoDialog(self, url)
 
-        # Fetch information
         dialog.show()
+
+        # Fetch information
         dialog.preFetch()
         Thread.start(lambda: dialog.fetch(),
                      lambda: dialog.postFetch())
@@ -138,6 +139,7 @@ class MenuBar(QMenuBar):
     def __init__(self, win: MainWindow):
         super().__init__(win)
 
+        # NOTE: place the import statement here to avoid circular import
         from Dialog import PrefDialog, AboutDialog
 
         # Create the 'File' menu

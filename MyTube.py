@@ -4,9 +4,10 @@ Contains utilities for configuring and downloading a YouTube video.
 
 import os
 import uuid
+from urllib.error import HTTPError
 
-from pytube import YouTube, Playlist, Stream
 import pytube.exceptions as ex
+from pytube import YouTube, Playlist, Stream
 
 
 class Option:
@@ -39,21 +40,22 @@ def isUrlPlaylist(url: str) -> bool:
 
 def checkUrl(url: str) -> str | None:
     """
-    Checks whether the specified URL leads to a valid YouTube video/playlist.
+    Checks whether the specified URL is a valid YouTube video or playlist.
 
-    Returns a message if an error occurred.
+    Returns a text message if an error occurred; otherwise, return None.
     """
 
     if isUrlPlaylist(url):
         return checkPlaylistUrl(url)
+
     return checkVideoUrl(url)
 
 
 def checkVideoUrl(url: str) -> str | None:
     """
-    Checks whether the specified URL leads to a valid YouTube video.
+    Checks whether the specified URL is a valid YouTube video.
 
-    Returns a message if an error occurred.
+    Returns a text message if an error occurred; otherwise, return None.
     """
 
     try:
@@ -77,23 +79,22 @@ def checkVideoUrl(url: str) -> str | None:
         return "Video is blocked in your region!"
     except ex.VideoUnavailable:
         return "Video is unavailable!"
-    except Exception:
+    except ex.PytubeError:
         return "An internal error occurred! Please try again."
     
 
 def checkPlaylistUrl(url: str) -> str | None:
     """
-    Checks whether the specified URL leads to a valid YouTube playlist.
+    Checks whether the specified URL is a valid YouTube playlist.
 
-    Returns a message if an error occurred.
+    Returns a text message if an error occurred; otherwise, return None.
     """
 
     try:
         pl = Playlist(url)
-        pl.title
-        if not pl.videos:
+        if pl.title and not pl.videos:
             return "Playlist must not be empty!"
-    except Exception:
+    except (KeyError, HTTPError):
         return "Invalid URL! Make sure the playlist is public and not empty."
 
 
@@ -108,82 +109,135 @@ def filterTitle(title: str, illegals="<>:\"/\\|?*") -> str:
     return title
 
 
-def getResolutions(yt: YouTube) -> list[str]:
+def allResolutions(yt: YouTube) -> list[str]:
     """
     Returns all available video resolutions of the specified video.
     """
 
+    # All video streams
     streams = yt.streams.filter(only_video=True)
+    # Unsorted resolutions of the video streams
     allRes = {stream.resolution for stream in streams}
+    # Sort based on the integer part (without the ending 'p')
     return sorted(allRes, key=lambda res: int(res[:-1]), reverse=True)
 
 
-def getBitrates(yt: YouTube) -> list[str]:
+def allBitrates(yt: YouTube) -> list[str]:
     """
     Returns all available audio bitrates of the specified video.
     """
 
+    # All audio streams
     streams = yt.streams.filter(only_audio=True)
+    # Unsorted bitrates of the audio streams
     allAbr = {stream.abr for stream in streams}
+    # Sort based on the integer part (without the ending 'kbps')
     return sorted(allAbr, key=lambda abr: int(abr[:-4]), reverse=True)
+
+
+def getResolution(yt: YouTube, quality: str) -> str:
+    """
+    Returns the video resolution that corresponds to the specified quality.
+    """
+
+    # If the specified quality is custom, return the custom quality
+    if quality not in QUALITIES:
+        return quality
+
+    # Otherwise, return the video resolution that corresponds to
+    # 'Highest', 'Medium' or 'Lowest'
+    allRes = allResolutions(yt)
+
+    if quality == Quality.Highest:
+        return allRes[0]
+
+    if quality == Quality.Medium:
+        index = len(allRes) // 2
+        if len(allRes) % 2 != 0:
+            index += 1
+        return allRes[index]
+
+    return allRes[-1]
+
+
+def getBitrate(yt: YouTube, quality: str) -> str:
+    """
+    Returns the audio bitrate that corresponds to the specified quality.
+    """
+
+    # If the specified quality is custom, return the custom quality
+    if quality not in QUALITIES:
+        return quality
+
+    # Otherwise, return the audio bitrate that corresponds to
+    # 'Highest', 'Medium' or 'Lowest'
+    allAbr = allBitrates(yt)
+
+    if quality == Quality.Highest:
+        return allAbr[0]
+
+    if quality == Quality.Medium:
+        index = len(allAbr) // 2
+        if len(allAbr) % 2 != 0:
+            index += 1
+        return allAbr[index]
+
+    return allAbr[-1]
 
 
 def getFileExt(filename: str) -> str:
     """
-    Returns the file extension from the specified file name.
+    Returns the file extension of the specified file name.
     """
 
     return os.path.splitext(filename)[1]
 
 
-def getQuality(quality: str, qualities: list[str]):
-    if quality == Quality.Highest:
-        return qualities[0]
-    if quality == Quality.Medium:
-        return qualities[len(qualities) // 2]
-    return qualities[-1]
-
-
-def downloadStream(stream: Stream, title: str, folder: str) -> str:
+def downloadStream(stream: Stream, title: str, dir: str) -> str:
     """
     Downloads a stream based on the specified configuration.
     """
     
     title = filterTitle(title)
     ext = getFileExt(stream.default_filename)
-    return stream.download(folder, f"{title}{ext}")
+    return stream.download(dir, f"{title}{ext}")
 
 
-def downloadAudio(yt: YouTube, title: str, abr: str, folder: str) -> str:
-    """
-    Downloads an audio based on the specified configuration.
-    """
-
-    stream = yt.streams.filter(only_audio=True, abr=abr)[0]
-    return downloadStream(stream, title, folder)
-
-
-def downloadVideo(yt: YouTube, title: str, res: str, folder: str) -> str:
+def downloadVideo(yt: YouTube, title: str, res: str, dir: str) -> str:
     """
     Downloads a video based on the specified configuration.
     """
 
     stream = yt.streams.filter(only_video=True, res=res)[0]
-    return downloadStream(stream, title, folder)
+    return downloadStream(stream, title, dir)
 
 
-def downloadBoth(yt: YouTube, title: str, res: str, abr: str, folder: str) -> str:
+def downloadAudio(yt: YouTube, title: str, abr: str, dir: str) -> str:
+    """
+    Downloads an audio based on the specified configuration.
+    """
+
+    stream = yt.streams.filter(only_audio=True, abr=abr)[0]
+    return downloadStream(stream, title, dir)
+
+
+def downloadBoth(yt: YouTube, title: str, res: str, abr: str, dir: str) -> str:
     """
     Downloads a video with audio based on the specified configuration.
     """
 
     title = filterTitle(title)
-    video = downloadVideo(yt, f"{title}{uuid.uuid4().hex}", res, folder)
-    audio = downloadAudio(yt, f"{title}{uuid.uuid4().hex}", abr, folder)
+    # Path of the downloaded video stream
+    video = downloadVideo(yt, f"{title}{uuid.uuid4().hex}", res, dir)
+    # Path of the downloaded audio stream
+    audio = downloadAudio(yt, f"{title}{uuid.uuid4().hex}", abr, dir)
+    # Path of the output file
     # 'mkv' output container can handle (almost) any codec
-    output = os.path.join(folder, f"{title}.mkv")
+    output = os.path.join(dir, f"{title}.mkv")
 
+    # Merge the video and audio with ffmpeg
     ffmpeg(video, audio, output)
+    # Remove the temporary files
     os.remove(video)
     os.remove(audio)
 
@@ -201,7 +255,15 @@ def ffmpeg(video: str, audio: str, output: str):
 
 
 # Download options
-OPTIONS = [Option.VideoWithAudio, Option.AudioOnly, Option.VideoOnly]
+OPTIONS = [
+    Option.VideoWithAudio,
+    Option.AudioOnly,
+    Option.VideoOnly
+]
 
 # Download qualities
-QUALITIES = [Quality.Highest, Quality.Medium, Quality.Lowest]
+QUALITIES = [
+    Quality.Highest,
+    Quality.Medium,
+    Quality.Lowest
+]
