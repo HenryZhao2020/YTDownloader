@@ -115,11 +115,8 @@ class MainWindow(QMainWindow):
             dialog = VideoDialog(self, url)
 
         dialog.show()
-
         # Fetch information
-        dialog.preFetch()
-        Thread.start(lambda: dialog.fetch(),
-                     lambda: dialog.postFetch())
+        dialog.startFetch()
 
     def show(self):
         """

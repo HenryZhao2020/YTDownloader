@@ -36,7 +36,7 @@ class Attr:
 
     def save(self):
         """
-        Saves all attributes in '__init__()' to the local disk.
+        Saves all attributes to the local disk.
         """
         
         with open("../Saved", "wb") as file:
@@ -44,12 +44,12 @@ class Attr:
 
     def load(self):
         """
-        Loads all attributes in '__init__()' from the local disk.
+        Loads all attributes from the local disk.
         """
 
         with open("../Saved", "rb") as file:
             vars(self).update(pickle.load(file))
 
 
-# Create a singleton for the Attribute class
+# Create a singleton for the 'Attr' class
 attr = Attr()

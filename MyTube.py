@@ -144,20 +144,18 @@ def getResolution(yt: YouTube, quality: str) -> str:
     if quality not in QUALITIES:
         return quality
 
-    # Otherwise, return the video resolution that corresponds to
-    # 'Highest', 'Medium' or 'Lowest'
     allRes = allResolutions(yt)
 
+    # Otherwise, return the video resolution that corresponds to
+    # 'Highest', 'Medium' or 'Lowest'
     if quality == Quality.Highest:
-        return allRes[0]
+        index = 0
+    elif quality == Quality.Medium:
+        index = len(allRes) // 2 + len(allRes) % 2
+    else:
+        index = -1
 
-    if quality == Quality.Medium:
-        index = len(allRes) // 2
-        if len(allRes) % 2 != 0:
-            index += 1
-        return allRes[index]
-
-    return allRes[-1]
+    return allRes[index]
 
 
 def getBitrate(yt: YouTube, quality: str) -> str:
@@ -169,20 +167,18 @@ def getBitrate(yt: YouTube, quality: str) -> str:
     if quality not in QUALITIES:
         return quality
 
-    # Otherwise, return the audio bitrate that corresponds to
-    # 'Highest', 'Medium' or 'Lowest'
     allAbr = allBitrates(yt)
 
+    # Otherwise, return the audio bitrate that corresponds to
+    # 'Highest', 'Medium' or 'Lowest'
     if quality == Quality.Highest:
-        return allAbr[0]
+        index = 0
+    elif quality == Quality.Medium:
+        index = len(allAbr) // 2 + len(allAbr) % 2
+    else:
+        index = -1
 
-    if quality == Quality.Medium:
-        index = len(allAbr) // 2
-        if len(allAbr) % 2 != 0:
-            index += 1
-        return allAbr[index]
-
-    return allAbr[-1]
+    return allAbr[index]
 
 
 def getFileExt(filename: str) -> str:

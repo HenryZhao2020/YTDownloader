@@ -23,7 +23,10 @@ class DownloadDialog(QDialog):
     Base class for the 'VideoDialog' class and the 'PlaylistDialog' class.
     """
 
-    def __init__(self, win: MainWindow):
+    def __init__(self, win: MainWindow, title: str):
+        # Window title
+        self.title = title
+
         super().__init__(win)
         # Free memory on close
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
@@ -44,12 +47,12 @@ class DownloadDialog(QDialog):
         # Start downloading on click
         self.startButton = QPushButton("Start", self)
         self.startButton.setDefault(True)
-        self.startButton.clicked.connect(lambda: self.confirmDownload())
+        self.startButton.clicked.connect(lambda: self.startDownload())
         self.mainLayout.addSpacing(25)
         self.mainLayout.addWidget(self.startButton, 0,
                                   Qt.AlignmentFlag.AlignRight)
 
-    def preFetch(self):
+    def startFetch(self):
         """
         Handles events before fetching.
         """
@@ -57,53 +60,56 @@ class DownloadDialog(QDialog):
         self.setEnabled(False)
         self.setWindowTitle("Fetching Information...")
 
-    def fetch(self):
+        Thread.start(lambda: self.onFetch(),
+                     lambda: self.afterFetch())
+
+    def onFetch(self):
         """
-        Fetches information online.
+        Fetching information online.
         """
 
-    def postFetch(self):
+    def afterFetch(self):
         """
         Handles events after fetching completes.
         """
 
         self.setEnabled(True)
+        self.setWindowTitle(self.title)
 
     def confirmDownload(self):
         """
         Confirms before downloading.
         """
 
-        # Confirm before download if preferred
-        if attr.confirmDownload:
-            # Display a question message box
-            ans = QMessageBox.question(self, "Confirm Download",
-                                       "Do you want to start the download?")
+        # Display a question message box
+        ans = QMessageBox.question(self, "Confirm Download",
+                                   "Do you want to start the download?")
 
-            # If the user does not select 'Yes', cancel download
-            if ans != QMessageBox.StandardButton.Yes:
-                return
+        # If the user selects 'Yes', return True; otherwise, return False
+        return ans == QMessageBox.StandardButton.Yes
 
-        # Otherwise, proceed to download
-        self.preDownload(),
-        Thread.start(lambda: self.download(),
-                     lambda: self.postDownload())
-
-    def preDownload(self):
+    def startDownload(self):
         """
         Handles events before downloading.
         """
+
+        # Confirm before the download if required
+        if attr.confirmDownload and not self.confirmDownload():
+            return
 
         # Disable the dialog to prevent any configurations from changing
         self.setEnabled(False)
         self.setWindowTitle("Downloading...")
 
-    def download(self):
+        Thread.start(lambda: self.onDownload(),
+                     lambda: self.afterDownload())
+
+    def onDownload(self):
         """
-        Starts downloading.
+        Downloading.
         """
 
-    def postDownload(self):
+    def afterDownload(self):
         """
         Handles events after downloading.
         """
@@ -116,6 +122,9 @@ class DownloadDialog(QDialog):
         # Enable the dialog again
         self.setEnabled(True)
         self.setWindowTitle("Download Complete!")
+
+        # Reset the window title after 10s
+        QTimer.singleShot(10000, self, lambda: self.setWindowTitle(self.title))
 
     def show(self):
         """
@@ -239,7 +248,7 @@ class VideoDialog(DownloadDialog):
     """
 
     def __init__(self, win: MainWindow, url: str):
-        super().__init__(win)
+        super().__init__(win, "Download Video")
 
         # Create a 'YouTube' instance
         self.yt = YouTube(url)
@@ -250,21 +259,16 @@ class VideoDialog(DownloadDialog):
             0, newGroupBox("Title", self, self.titleField)
         )
 
-    def fetch(self):
-        super().fetch()
+    def onFetch(self):
+        super().onFetch()
 
         self.titleField.setText(self.yt.title)
 
         self.qualFrame.vidBox.addItems(MyTube.allResolutions(self.yt))
         self.qualFrame.audBox.addItems(MyTube.allBitrates(self.yt))
 
-    def postFetch(self):
-        super().postFetch()
-
-        self.setWindowTitle("Download Video")
-
-    def download(self):
-        super().download()
+    def onDownload(self):
+        super().onDownload()
 
         # Fetch configurations
         title = self.titleField.text()
@@ -283,13 +287,6 @@ class VideoDialog(DownloadDialog):
         else:
             MyTube.downloadVideo(self.yt, title, res, dir)
 
-    def postDownload(self):
-        super().postDownload()
-
-        # Reset the window title after 10s
-        QTimer.singleShot(10000, self,
-                          lambda: self.setWindowTitle("Download Video"))
-
 
 class PlaylistDialog(DownloadDialog):
     """
@@ -297,7 +294,7 @@ class PlaylistDialog(DownloadDialog):
     """
 
     def __init__(self, win: MainWindow, url: str):
-        super().__init__(win)
+        super().__init__(win, "Download Playlist")
 
         # Create a 'Playlist' instance
         self.pl = Playlist(url)
@@ -312,13 +309,6 @@ class PlaylistDialog(DownloadDialog):
             0, newGroupBox("Playlist", self, self.listWidget)
         )
 
-    def fetch(self):
-        super().fetch()
-
-        # Fetch all videos
-        for yt in self.pl.videos:
-            self.addPlaylistItem(yt)
-
     def addPlaylistItem(self, yt: YouTube):
         """
         Adds an item to the playlist.
@@ -332,11 +322,6 @@ class PlaylistDialog(DownloadDialog):
                       Qt.ItemFlag.ItemIsUserCheckable)
         self.listWidget.addItem(item)
 
-    def postFetch(self):
-        super().postFetch()
-
-        self.setWindowTitle("Download Playlist")
-
     def getCheckedRows(self):
         """
         Returns the row numbers of all checked items. 
@@ -347,8 +332,15 @@ class PlaylistDialog(DownloadDialog):
             if self.listWidget.item(i).checkState() == Qt.CheckState.Checked
         ]
 
-    def download(self):
-        super().download()
+    def onFetch(self):
+        super().onFetch()
+
+        # Fetch all videos
+        for yt in self.pl.videos:
+            self.addPlaylistItem(yt)
+
+    def onDownload(self):
+        super().onDownload()
 
         # Total number of videos in a playlist
         rows = self.getCheckedRows()
@@ -373,13 +365,6 @@ class PlaylistDialog(DownloadDialog):
                 MyTube.downloadAudio(yt, title, abr, dir)
             else:
                 MyTube.downloadVideo(yt, title, res, dir)
-
-    def postDownload(self):
-        super().postDownload()
-
-        # Reset the window title after 10s
-        QTimer.singleShot(10000, self,
-                          lambda: self.setWindowTitle("Download Playlist"))
 
 
 class PrefDialog(QDialog):
