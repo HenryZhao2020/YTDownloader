@@ -51,9 +51,9 @@ Downloading Playlist:
 
 Preferences Dialog:
 
-![image](https://github.com/HenryZhao2020/YTDownloader/assets/75873192/7201ffd4-d02e-4e5d-9aae-18c2e8bd7e16)
+![image](https://github.com/HenryZhao2020/YTDownloader/assets/75873192/2cdde687-9995-452f-b1e8-6cb9332177be)
 
 
 About Dialog:
 
-![image](https://github.com/HenryZhao2020/YTDownloader/assets/75873192/43395338-0c8e-4ee1-8b46-d18eb50e7dd5)
+![image](https://github.com/HenryZhao2020/YTDownloader/assets/75873192/0ab09edf-a11d-47a1-9b6b-3b1782577704)
