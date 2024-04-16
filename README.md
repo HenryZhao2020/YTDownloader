@@ -11,7 +11,7 @@ Download Latest Version: https://github.com/HenryZhao2020/YTDownloader/releases/
 
 Enter Video URL:
 
-![image](https://github.com/HenryZhao2020/YTDownloader/assets/75873192/72687c44-25a9-4863-a9ab-1eede6af8937)
+![image](https://github.com/HenryZhao2020/YTDownloader/assets/75873192/e2eec5ae-8b1c-49aa-9fae-a7193db19944)
 
 
 Fetching Video Information:
@@ -56,4 +56,4 @@ Preferences Dialog:
 
 About Dialog:
 
-![image](https://github.com/HenryZhao2020/YTDownloader/assets/75873192/0ab09edf-a11d-47a1-9b6b-3b1782577704)
+![image](https://github.com/HenryZhao2020/YTDownloader/assets/75873192/38b356f7-7f22-425f-af47-c3f09a8406e3)
