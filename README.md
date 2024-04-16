@@ -4,8 +4,6 @@ A useful utility for downloading YouTube videos or playlists for free!
 
 Download ffmpeg: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip
 
-Download Latest Version: https://github.com/HenryZhao2020/YTDownloader/releases/download/v1.0.0/YTDownloader-v1.0.0.zip
-
 
 # Preview
 
