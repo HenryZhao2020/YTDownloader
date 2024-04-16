@@ -1,13 +1,14 @@
 """
-Contains the GUI implementation.
+Contains the implementation of the main window.
 """
 
 import webbrowser
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QGridLayout
-from PySide6.QtWidgets import QWidget, QApplication, QMainWindow, QMenuBar, \
-    QLabel, QLineEdit, QSpacerItem, QPushButton
+from PySide6.QtWidgets import (
+    QApplication, QGridLayout, QLabel, QLineEdit, QMainWindow,
+    QMenuBar, QMessageBox, QPushButton, QSpacerItem, QWidget,
+)
 from pytube import YouTube, Playlist
 
 import MyTube
@@ -16,7 +17,8 @@ import Thread
 
 class MainWindow(QMainWindow):
     """
-    Prompts the user to enter a URL, then proceeds to download.
+    Prompts the user to enter the URL of a video or a playlist,
+    then proceeds to download.
     """
 
     def __init__(self):
@@ -32,33 +34,43 @@ class MainWindow(QMainWindow):
 
         # Set up the layout
         gridLayout = QGridLayout(widget)
-        gridLayout.setHorizontalSpacing(50)
-        gridLayout.setVerticalSpacing(5)
+        gridLayout.setSpacing(8)
         gridLayout.setContentsMargins(40, 40, 40, 40)
+
+        # Prompt the user to enter the URL
+        promptLabel = QLabel("Enter Video or Playlist URL:", self)
+        gridLayout.addWidget(promptLabel, 0, 0, 1, 2)
 
         # Create a field for entering the URL
         self.urlField = QLineEdit(self)
-        self.urlField.setMinimumWidth(350)
+        self.urlField.setMinimumWidth(360)
+        self.urlField.returnPressed.connect(lambda: self.nextButton.click())
         self.urlField.textChanged.connect(lambda: (
             self.resetStatus(),
             Thread.start(lambda: self.checkUrl()),
         ))
-        self.urlField.returnPressed.connect(lambda: self.nextButton.click())
-        gridLayout.addWidget(QLabel("URL:", self), 0, 0)
-        gridLayout.addWidget(self.urlField, 0, 1)
+        gridLayout.addWidget(self.urlField, 1, 0)
+
+        # Set URL to the content of the clipboard
+        pasteButton = QPushButton("Paste", self)
+        pasteButton.setToolTip("Set URL to the content of the clipboard")
+        pasteButton.clicked.connect(lambda: (
+            self.urlField.setText(QApplication.clipboard().text()),
+            self.nextButton.click(),
+        ))
+        gridLayout.addWidget(pasteButton, 1, 1)
 
         # Display status while entering the URL
         self.infoLabel = QLabel(self)
-        gridLayout.addWidget(self.infoLabel, 1, 1, Qt.AlignmentFlag.AlignTop)
+        gridLayout.addWidget(self.infoLabel, 2, 0, 1, 2)
 
         # Proceed to download on click
         self.nextButton = QPushButton("Next", self)
         self.nextButton.setDefault(True)
         self.nextButton.setEnabled(False)
         self.nextButton.clicked.connect(lambda: self.next())
-        gridLayout.addItem(QSpacerItem(0, 25), 2, 1)
-        gridLayout.addWidget(self.nextButton, 3, 1, 
-                             Qt.AlignmentFlag.AlignRight)
+        gridLayout.addItem(QSpacerItem(0, 32), 3, 1)
+        gridLayout.addWidget(self.nextButton, 4, 1, Qt.AlignmentFlag.AlignRight)
 
     def resetStatus(self):
         """
@@ -108,9 +120,30 @@ class MainWindow(QMainWindow):
         # Entered URL
         url = self.urlField.text()
 
-        # Switch to the download dialog
+        # Download playlist
+        # Ex: https://www.youtube.com/playlist?list=PL6C1LEYvl43RHLS2gFFf6kn4hoAs6kOgF
         if MyTube.isUrlPlaylist(url):
             dialog = PlaylistDialog(self, url)
+
+        # If a video is part of a playlist, prompt user to choose 
+        # between downloading the single video or the entire playlist
+        # Ex: https://youtu.be/KWLGyeg74es?list=PL6C1LEYvl43RHLS2gFFf6kn4hoAs6kOgF
+        elif not MyTube.checkPlaylistUrl(MyTube.extractPlaylistUrl(url)):
+            ans = QMessageBox.question(
+                self, "Video or Playlist", 
+                "This video is part of a playlist.\n"
+                "Do you want to download the playlist instead?"
+            )
+
+            if ans == QMessageBox.StandardButton.Yes:
+                id = url[url.index('list'):]
+                url = f"https://www.youtube.com/playlist?{id}"
+                dialog = PlaylistDialog(self, url)
+            else:
+                dialog = VideoDialog(self, url)
+    
+        # Download video
+        # Ex: https://youtu.be/KWLGyeg74es
         else:
             dialog = VideoDialog(self, url)
 
@@ -143,7 +176,7 @@ class MenuBar(QMenuBar):
         fileMenu = self.addMenu("&File")
         fileMenu.addAction("&Preferences", "Ctrl+P", 
                            lambda: PrefDialog(win).show())
-        fileMenu.addAction("&Go to YouTube", 
+        fileMenu.addAction("Visit &YouTube", 
                            lambda: webbrowser.open("https://www.youtube.com"))
         fileMenu.addSeparator()
         fileMenu.addAction("E&xit", lambda: QApplication.quit())

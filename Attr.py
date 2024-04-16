@@ -10,7 +10,7 @@ from MyTube import Option, Quality
 
 class Attr:
     """
-    Stores attributes for saving and loading program state.
+    Contains shared attributes for saving and loading program state.
     """
 
     def __init__(self):

@@ -4,27 +4,28 @@ Contains the implementation of various dialog boxes used in the program.
 
 from PySide6.QtCore import Qt, QSize, QTimer
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QFormLayout, \
-    QGridLayout
-from PySide6.QtWidgets import QWidget, QDialog, QFileDialog, QMessageBox, \
-    QFrame, QPushButton, QGroupBox, QLineEdit, QComboBox, QCheckBox, \
-    QListWidget, QListWidgetItem, QTextBrowser
-from pytube import YouTube, Playlist
+from PySide6.QtWidgets import (
+    QCheckBox, QComboBox, QDialog, QFileDialog, QFormLayout,
+    QFrame, QGridLayout, QGroupBox, QHBoxLayout, QLineEdit,
+    QListWidget, QListWidgetItem, QMessageBox, QPushButton, 
+    QTextBrowser, QVBoxLayout, QWidget,
+)
+from pytube import Playlist, YouTube
 
 import MyTube
 import Thread
-from Attr import attr
 from MainWindow import MainWindow
 from MyTube import Option
+from Attr import attr
 
 
 class DownloadDialog(QDialog):
     """
-    Base class for the 'VideoDialog' class and the 'PlaylistDialog' class.
+    Base class for 'VideoDialog' and 'PlaylistDialog'.
     """
 
     def __init__(self, win: MainWindow, title: str):
-        # Window title
+        # Text displayed on the title bar
         self.title = title
 
         super().__init__(win)
@@ -38,11 +39,11 @@ class DownloadDialog(QDialog):
 
         # Configure download quality
         self.qualFrame = QualityFrame(self)
-        self.mainLayout.addWidget(newGroupBox("Quality", self, self.qualFrame))
+        self.mainLayout.addWidget(group("Quality", self, self.qualFrame))
 
         # Configure download location
         self.dirFrame = DirFrame(self)
-        self.mainLayout.addWidget(newGroupBox("Save To", self, self.dirFrame))
+        self.mainLayout.addWidget(group("Save To", self, self.dirFrame))
 
         # Start downloading on click
         self.startButton = QPushButton("Start", self)
@@ -61,14 +62,14 @@ class DownloadDialog(QDialog):
         self.setWindowTitle("Fetching Information...")
 
         Thread.start(lambda: self.onFetch(),
-                     lambda: self.afterFetch())
+                     lambda: self.postFetch())
 
     def onFetch(self):
         """
         Fetching information online.
         """
 
-    def afterFetch(self):
+    def postFetch(self):
         """
         Handles events after fetching completes.
         """
@@ -102,14 +103,14 @@ class DownloadDialog(QDialog):
         self.setWindowTitle("Downloading...")
 
         Thread.start(lambda: self.onDownload(),
-                     lambda: self.afterDownload())
+                     lambda: self.postDownload())
 
     def onDownload(self):
         """
         Downloading.
         """
 
-    def afterDownload(self):
+    def postDownload(self):
         """
         Handles events after downloading.
         """
@@ -141,7 +142,7 @@ class DownloadDialog(QDialog):
 
 class QualityFrame(QFrame):
     """
-    Displays and selects the quality.
+    Prompts the user for the selection of download quality.
     """
 
     def __init__(self, parent: QWidget = None):
@@ -174,7 +175,7 @@ class QualityFrame(QFrame):
         self.audBox.addItems(MyTube.QUALITIES)
         formLayout.addRow("Audio Quality:", self.audBox)
 
-        # Set to default
+        # Set field to default
         self.optBox.setCurrentText(attr.opt)
         self.vidBox.setCurrentText(attr.vidQuality)
         self.audBox.setCurrentText(attr.audQuality)
@@ -255,9 +256,7 @@ class VideoDialog(DownloadDialog):
 
         # Display and edit video title
         self.titleField = QLineEdit(self)
-        self.mainLayout.insertWidget(
-            0, newGroupBox("Title", self, self.titleField)
-        )
+        self.mainLayout.insertWidget(0, group("Title", self, self.titleField))
 
     def onFetch(self):
         super().onFetch()
@@ -306,7 +305,7 @@ class PlaylistDialog(DownloadDialog):
             lambda: self.startButton.setDisabled(not self.getCheckedRows())
         )
         self.mainLayout.insertWidget(
-            0, newGroupBox("Playlist", self, self.listWidget)
+            0, group("Playlist", self, self.listWidget)
         )
 
     def addPlaylistItem(self, yt: YouTube):
@@ -353,7 +352,7 @@ class PlaylistDialog(DownloadDialog):
             self.setWindowTitle(f"Downloading ({i + 1} of {len(rows)})...")
 
             # Fetch configurations
-            yt = self.pl.videos[i]
+            yt = self.pl.videos[row]
             title = self.listWidget.item(row).text()
             res = MyTube.getResolution(yt, vidQuality)
             abr = MyTube.getBitrate(yt, audQuality)
@@ -385,11 +384,11 @@ class PrefDialog(QDialog):
 
         # Configure download quality
         self.qualFrame = QualityFrame(self)
-        mainLayout.addWidget(newGroupBox("Quality", self, self.qualFrame))
+        mainLayout.addWidget(group("Quality", self, self.qualFrame))
 
         # Configure download location
         self.dirFrame = DirFrame(self)
-        mainLayout.addWidget(newGroupBox("Save To", self, self.dirFrame))
+        mainLayout.addWidget(group("Save To", self, self.dirFrame))
 
         # Whether to confirm before download
         self.confirmBox = QCheckBox("Confirm Before Download", self)
@@ -400,9 +399,9 @@ class PrefDialog(QDialog):
         self.closeAfterBox.setChecked(attr.closeAfterDownload)
 
         # Group all check boxes
-        mainLayout.addWidget(newGroupBox("Action", self,
-                                         self.confirmBox,
-                                         self.closeAfterBox))
+        mainLayout.addWidget(
+            group("Action", self, self.confirmBox, self.closeAfterBox)
+        )
 
         # Display buttons horizontally
         buttonFrame = QFrame(self)
@@ -512,9 +511,9 @@ class AboutDialog(QDialog):
         super().show()
 
 
-def newGroupBox(title: str, parent: QWidget = None, *widgets: QWidget):
+def group(title: str, parent: QWidget = None, *widgets: QWidget):
     """
-    Creates a group box with a vertical box layout.
+    Vertically display widgets in a group box.
     """
 
     box = QGroupBox(title, parent)

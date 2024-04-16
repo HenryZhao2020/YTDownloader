@@ -98,6 +98,26 @@ def checkPlaylistUrl(url: str) -> str | None:
         return "Invalid URL! Make sure the playlist is public and not empty."
 
 
+def isVideoInPlaylist(url: str) -> bool:
+    """
+    Checks whether a video is part of a playlist.
+    """
+
+    return "list" in url
+
+
+def extractPlaylistUrl(url: str) -> str:
+    """
+    Attempts to extract the playlist URL from a video URL.
+    """
+
+    if isVideoInPlaylist(url):
+        id = url[url.index("list"):]
+        return f"https://www.youtube.com/playlist?{id}"
+    
+    return url
+
+
 def filterTitle(title: str, illegals="<>:\"/\\|?*") -> str:
     """
     Replaces all specified illegal characters with underscores (_).
